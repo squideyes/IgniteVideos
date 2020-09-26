@@ -1,0 +1,382 @@
+﻿<!--
+Copyright 2020 by Louis S. Berman
+
+Permission is hereby granted, free of charge, to any person 
+obtaining a copy of this software and associated documentation 
+files (the "Software"), to deal in the Software without 
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or 
+sell copies of the Software, and to permit persons to whom 
+the Software is furnished to do so, subject to the following 
+conditions:
+
+The above copyright notice and this permission notice shall be 
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR 
+OTHER DEALINGS IN THE SOFTWARE.
+-->
+<Window x:Class="IgniteVideos.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:IgniteVideos"
+        mc:Ignorable="d"
+        Title="{Binding Title}"
+        Height="449"
+        Width="800"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <local:InvertBoolConverter x:Key="invertBoolConverter" />
+        <local:NullFilterKindConverter x:Key="nullFilterKindConverter" />
+        <local:NullSessionKindConverter x:Key="nullSessionKindConverter" />
+        <local:RunInfosToInlinesConverter x:Key="runInfosToInlinesConverter" />
+        <Style TargetType="Button"
+               x:Key="ButtonStyle">
+            <Setter Property="FontWeight"
+                    Value="Bold" />
+            <Setter Property="Margin"
+                    Value="4,0,0,0" />
+        </Style>
+        <Style x:Key="transparentStyle"
+               TargetType="{x:Type Button}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="placeHolder"
+               TargetType="{x:Type TextBox}"
+               BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TextBox}">
+                        <Grid>
+                            <TextBox Text="{Binding Path=Text,
+                                                RelativeSource={RelativeSource TemplatedParent}, 
+                                                Mode=TwoWay,
+                                                UpdateSourceTrigger=PropertyChanged}"
+                                     x:Name="textSource"
+                                     Background="Transparent"
+                                     Panel.ZIndex="2" />
+                            <TextBox Text="{TemplateBinding Tag}"
+                                     Background="{TemplateBinding Background}"
+                                     Panel.ZIndex="1">
+                                <TextBox.Style>
+                                    <Style TargetType="{x:Type TextBox}">
+                                        <Setter Property="Foreground"
+                                                Value="Transparent" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Path=Text, Source={x:Reference textSource}}"
+                                                         Value="">
+                                                <Setter Property="Foreground"
+                                                        Value="LightGray" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <ObjectDataProvider x:Key="sessionKinds"
+                            MethodName="GetValues"
+                            ObjectType="{x:Type sys:Enum}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="local:SessionKind" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+        <ObjectDataProvider x:Key="filterKinds"
+                            MethodName="GetValues"
+                            ObjectType="{x:Type sys:Enum}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="local:FilterKind" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>        
+    </Window.Resources>
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="83" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <GroupBox Header="Controls"
+                  HorizontalContentAlignment="Center">
+            <DockPanel Margin="0,8,0,0">
+                <Button DockPanel.Dock="Right"
+                        Content="Help"
+                        Padding="8,0"
+                        Command="{Binding HelpCommand}"
+                        Style="{StaticResource ButtonStyle}"
+                        IsEnabled="{Binding Downloading, Converter={StaticResource invertBoolConverter}}" />
+                <Button DockPanel.Dock="Right"
+                        Width="76"
+                        Content="{Binding CancelOrDownloadLabel, FallbackValue=Download}"
+                        Command="{Binding CancelOrDownloadCommand}"
+                        Style="{StaticResource ButtonStyle}" />
+                <ComboBox DockPanel.Dock="Right"
+                          Width="112"
+                          Margin="4,0,0,0"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          IsEnabled="{Binding Downloading, Converter={StaticResource invertBoolConverter}}"
+                          SelectedItem="{Binding SelectedSessionKind, Converter={StaticResource nullSessionKindConverter}}"
+                          FontWeight="Bold">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Path=., Mode=OneWay}"
+                                       Height="Auto"
+                                       Margin="0"
+                                       VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                    <ComboBox.ItemsSource>
+                        <CompositeCollection>
+                            <x:Static Member="local:NullSessionKindConverter.NullText" />
+                            <CollectionContainer Collection="{Binding Source={StaticResource sessionKinds}}" />
+                        </CompositeCollection>
+                    </ComboBox.ItemsSource>
+                </ComboBox>
+                <ComboBox DockPanel.Dock="Right"
+                          Width="90"
+                          Margin="4,0,0,0"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          IsEnabled="{Binding Downloading, Converter={StaticResource invertBoolConverter}}"
+                          SelectedItem="{Binding SelectedFilterKind, Converter={StaticResource nullFilterKindConverter}}"
+                          FontWeight="Bold">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Path=., Mode=OneWay}"
+                                       Height="Auto"
+                                       Margin="0"
+                                       VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                    <ComboBox.ItemsSource>
+                        <CompositeCollection>
+                            <x:Static Member="local:NullFilterKindConverter.NullText" />
+                            <CollectionContainer Collection="{Binding Source={StaticResource filterKinds}}" />
+                        </CompositeCollection>
+                    </ComboBox.ItemsSource>
+                </ComboBox> 
+                <Grid>
+                    <TextBox Style="{StaticResource placeHolder}"
+                             Tag="Enter Filter-Text (for Code, Title or Talent)"
+                             DockPanel.Dock="Left"
+                             FontWeight="Bold"
+                             IsEnabled="{Binding Downloading, Converter={StaticResource invertBoolConverter}}"
+                             Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button HorizontalAlignment="Right"
+                            Margin="0,-3,4,0"
+                            Width="8"
+                            Height="16"
+                            Content="x"
+                            Command="{Binding ClearFilterTextCommand}"
+                            Style="{StaticResource transparentStyle}"
+                            IsEnabled="{Binding Downloading, Converter={StaticResource invertBoolConverter}}"
+                            Focusable="False" />
+                </Grid>
+            </DockPanel>
+        </GroupBox>
+        <DataGrid x:Name="SessionsGrid"
+                  Grid.Row="1"
+                  Margin="0,4,0,0"
+                  AutoGenerateColumns="False"
+                  ItemsSource="{Binding Sessions}"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  CanUserResizeRows="False"
+                  CanUserResizeColumns="False"
+                  CanUserSortColumns="False"
+                  CanUserReorderColumns="False"
+                  IsSynchronizedWithCurrentItem="True"
+                  ScrollViewer.VerticalScrollBarVisibility="Visible">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Code"
+                                    IsReadOnly="True"
+                                    Binding="{Binding Code}" />
+                <DataGridTextColumn Header="Kind"
+                                    IsReadOnly="True"
+                                    Width="84"
+                                    Binding="{Binding Kind}" />
+                <DataGridTemplateColumn Header="Title"
+                                        IsReadOnly="True"
+                                        Width="*">
+                    <DataGridTemplateColumn.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="ToolTip"
+                                    Value="{Binding Title}" />
+                        </Style>
+                    </DataGridTemplateColumn.CellStyle>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Title}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Talent"
+                                        IsReadOnly="True"
+                                        Width="240">
+                    <DataGridTemplateColumn.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="ToolTip"
+                                    Value="{Binding Talent}" />
+                        </Style>
+                    </DataGridTemplateColumn.CellStyle>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Talent}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridCheckBoxColumn Width="28"
+                                        IsThreeState="False"
+                                        Binding="{Binding IsFavorite, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                    <DataGridCheckBoxColumn.Header>
+                        <Image Width="16" Height="16" Source="/Views/EmptyHeart.png" />
+                    </DataGridCheckBoxColumn.Header>
+                    <DataGridCheckBoxColumn.ElementStyle>
+                        <Style TargetType="{x:Type CheckBox}">
+                            <Setter Property="IsEnabled"
+                                    Value="True" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type CheckBox}">
+                                        <Image Width="16"
+                                               Height="16">
+                                            <Image.Style>
+                                                <Style TargetType="{x:Type Image}">
+                                                    <Setter Property="Source"
+                                                            Value="EmptyHeart.png" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=CheckBox}}"
+                                                                     Value="True">
+                                                            <Setter Property="Source"
+                                                                    Value="FullHeart.png" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Image.Style>
+                                        </Image>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGridCheckBoxColumn.ElementStyle>
+                </DataGridCheckBoxColumn>
+                <DataGridTemplateColumn Width="28">
+                    <DataGridTemplateColumn.Header>
+                        <CheckBox IsChecked="{Binding Path=DataContext.AllSelected, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
+                                  IsEnabled="{Binding Path=DataContext.Downloading, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource invertBoolConverter}, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox HorizontalAlignment="Center"
+                                      IsChecked="{Binding Path=Selected, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEnabled="{Binding Path=DataContext.Downloading, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource invertBoolConverter}, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn>
+                    <DataGridTemplateColumn.Header>
+                        <TextBlock Text="Play"
+                                   TextAlignment="Center" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Play"
+                                    IsEnabled="{Binding HasVideo}"
+                                    Command="{Binding DataContext.PlayVideoCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
+                                    CommandParameter="{Binding ElementName=SessionsGrid, Path=SelectedItem}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn>
+                    <DataGridTemplateColumn.Header>
+                        <TextBlock Text="Stream"
+                                   TextAlignment="Center" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Stream"
+                                    Command="{Binding DataContext.StreamVideoCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
+                                    CommandParameter="{Binding ElementName=SessionsGrid, Path=SelectedItem}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn>
+                    <DataGridTemplateColumn.Header>
+                        <TextBlock Text="Info"
+                                   TextAlignment="Center" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Info"
+                                    Command="{Binding DataContext.GoToSessionCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
+                                    CommandParameter="{Binding ElementName=SessionsGrid, Path=SelectedItem}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+        <GroupBox Header="Details"
+                  Margin="0,4,0,0"
+                  Grid.Row="2"
+                  Grid.ColumnSpan="2"
+                  Padding="4">
+            <ScrollViewer>
+                <TextBlock TextWrapping="WrapWithOverflow"
+                           local:Attached.Inlines="{Binding ElementName=SessionsGrid, Path=SelectedItem, Converter={StaticResource runInfosToInlinesConverter}}" />
+            </ScrollViewer>
+        </GroupBox>
+        <StatusBar Grid.Row="3"
+                   Margin="0,4,0,0">
+            <StatusBar.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                    </Grid>
+                </ItemsPanelTemplate>
+            </StatusBar.ItemsPanel>
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusPrompt}" />
+            </StatusBarItem>
+            <StatusBarItem Grid.Column="1">
+                <TextBox Width="190"
+                         Focusable="false"
+                         IsReadOnly="True"
+                         HorizontalContentAlignment="Center"
+                         Text="{Binding Progress}" />
+            </StatusBarItem>
+            <StatusBarItem Grid.Column="2">
+                <TextBox Width="90"
+                         IsReadOnly="True"
+                         HorizontalContentAlignment="Center"
+                         Text="{Binding SessionsCount}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
